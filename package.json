@@ -1,0 +1,15 @@
+{
+  "name": "sfs",
+  "version": "0.0.0",
+  "description": "Supreme File System",
+  "main": "index.js",
+  "scripts": {
+    "test": "illuminati"
+  },
+  "author": "Arnout Kazemier",
+  "license": "MIT",
+  "devDependencies": {
+    "assume": "0.0.x",
+    "illuminati": "0.0.x"
+  }
+}
