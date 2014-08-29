@@ -9,7 +9,15 @@ describe('HotPath', function () {
   });
 
   describe('#set', function () {
-    it('only stores data if we do not blow out of memory');
+    it('only stores data if we do not blow out of memory', function () {
+      var hp = new HotPath({ available: 100 });
+
+      assume(hp.set('foo', new Buffer(40))).to.equal(false);
+      assume(hp.set('foo', new Buffer(2))).to.equal(true);
+
+      hp.destroy();
+    });
+
     it('transforms everything in buffers');
     it('increments the allocated size');
     it('returns true when stored');

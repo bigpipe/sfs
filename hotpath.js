@@ -60,6 +60,8 @@ HotPath.prototype.set = function set(key, value) {
 
   this.allocated += value.length;
   this.storage[this.prefix + key] = value;
+
+  return true;
 };
 
 /**
@@ -127,6 +129,18 @@ HotPath.prototype.ram = function ram(available) {
   if (free > 1700000000) percentage = 10;
 
   return (free / 100) * percentage;
+};
+
+/**
+ * Clear all the things.
+ *
+ * @returns {HotPath}
+ * @api public
+ */
+HotPath.prototype.destroy = function destroy() {
+  this.maximum = this.free = this.storage = this.allocated = this.prefix = null;
+
+  return this;
 };
 
 //
