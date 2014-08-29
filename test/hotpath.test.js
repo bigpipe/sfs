@@ -13,7 +13,10 @@ describe('HotPath', function () {
       var hp = new HotPath({ available: 100 });
 
       assume(hp.set('foo', new Buffer(40))).to.equal(false);
+      assume(hp.get('foo')).to.equal(undefined);
+
       assume(hp.set('foo', new Buffer(2))).to.equal(true);
+      assume(hp.get('foo')).to.be.a('buffer');
 
       hp.destroy();
     });
