@@ -28,6 +28,7 @@ function HotPath(options) {
   this.maximum = +options.maximum || HotPath.maximum; // Maximum memory available.
   this.free = this.ram(options.available);            // Free mem we can use.
   this.prefix = options.prefix || '_HotPath';         // Prefix for keys.
+  this.countkey = options.key || false;               // Also include key length.
   this.storage = Object.create(null);                 // Empty object.
   this.allocated = 0;                                 // Amount of mem we use.
 }
@@ -58,8 +59,14 @@ HotPath.prototype.set = function set(key, value) {
   //
   if (value.length + this.allocated > this.free) return false;
 
+  key = this.prefix + key;
+
   this.allocated += value.length;
-  this.storage[this.prefix + key] = value;
+  this.storage[key] = value;
+
+  if (this.countkey) {
+    this.allocated += Buffer.byteLength(key);
+ }
 
   return true;
 };
@@ -88,6 +95,10 @@ HotPath.prototype.remove = function remove(key) {
   if (!(key in this.storage)) return false;
 
   this.allocated -= this.storage[key].length;
+
+  if (this.countkey) {
+    this.allocated -= Buffer.byteLength(key);
+ }
 
   //
   // We want to copy over all existing data to a new object to ensure the

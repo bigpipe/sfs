@@ -21,9 +21,47 @@ describe('HotPath', function () {
       hp.destroy();
     });
 
-    it('transforms everything in buffers');
-    it('increments the allocated size');
-    it('returns true when stored');
+    it('transforms everything in buffers', function () {
+      var hp = new HotPath();
+
+      hp.set('foo', 'bar');
+      assume(hp.get('foo')).to.be.a('buffer');
+
+      hp.destroy();
+    });
+
+    it('increments the allocated size', function () {
+      var hp = new HotPath()
+        , x = new Buffer('foobar');
+
+      assume(hp.allocated).to.equal(0);
+      hp.set('foo', x);
+
+      assume(hp.allocated).to.equal(x.length);
+
+      hp.destroy();
+    });
+
+    it('increments allocated size including key size', function () {
+      var hp = new HotPath()
+        , x = new Buffer('foobar');
+
+      assume(hp.allocated).to.equal(0);
+      hp.set('foo', x);
+
+      assume(hp.allocated).to.be.above(x.length);
+
+      hp.destroy();
+    });
+
+    it('returns true when stored', function () {
+      var hp = new HotPath()
+        , x = new Buffer('foobar');
+
+      assume(hp.set('foo', x)).to.equal(true);
+
+      hp.destroy();
+    });
   });
 
   describe('#get', function () {
