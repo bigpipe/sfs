@@ -132,14 +132,25 @@ HotPath.prototype.ram = function ram(available) {
   var free = available || os.freemem()
     , percentage = 2;
 
-  if (free > this.maximum) free = this.maximum;
-
   //
   // Increase the size of the hot cache if we have a lot of free ram available.
   //
-  if (free > 1700000000) percentage = 10;
+  if (free >= this.maximum) percentage = 10;
+  if (free > this.maximum) free = this.maximum;
 
   return (free / 100) * percentage;
+};
+
+/**
+ * Purge the cache and remove all items so it can be re-filled again.
+ *
+ * @api public
+ */
+HotPath.prototype.reset = function reset() {
+  this.allocated = 0;
+  this.storage = Object.create(null);
+
+  return this;
 };
 
 /**
