@@ -11,5 +11,9 @@
   "devDependencies": {
     "assume": "0.0.x",
     "illuminati": "0.0.x"
+  },
+  "dependencies": {
+    "diagnostics": "0.0.x",
+    "eventemitter3": "0.1.x"
   }
 }
