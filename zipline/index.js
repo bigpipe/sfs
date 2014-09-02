@@ -1,15 +1,26 @@
 'use strict';
 
+//
+// The major release version of this plugin which is used as value for the
+// cookie check.
+//
+var major = require('./package.json').version.split('.').shift()
+  , line = require('fs').readFileSync(__dirname +'/line.gz');
+
 /**
  * Check if the given headers support gzip or deflate for compression.
  *
  * @param {Object} headers Headers of the incoming request.
- * @param {String} what The encoding that we want to use.
  * @returns {String|Undefined}
  * @api private
  */
-function allows(headers, what) {
-  if (!what) what = 'gzip';
+function zipline(headers) {
+  //
+  // Check for the bypass cookie which can be set
+  //
+  if (headers.cookie && ~headers.cookie.indexOf('zipline='+ major)) {
+    return 'gzip';
+  }
 
   var obfheader = /^(Accept-EncodXng|X-cept-Encoding|X{15}|~{15}|-{15})$/i
     , obfvalue = /^((gzip|deflate)\s*,?\s*)+|[X\~\-]{4,13}$/i
@@ -47,7 +58,30 @@ function allows(headers, what) {
   return undefined;
 }
 
+/**
+ * Respond to /zipline.js requests in addition to automatically adding
+ * a `zipline` property to the incoming HTTP request.
+ *
+ * @param {Request} req Incoming HTTP request.
+ * @param {Response} res Outgoing HTTP response.
+ * @param {Function} next Continuation callback.
+ * @api public
+ */
+function middleware(req, res, next) {
+  req.zipline = zipline(req.headers);
+
+  if (req.url !== '/zipline.js') return next();
+
+  res.statusCode = 200;
+  res.setHeader('Content-Encoding', 'gzip');
+  res.setHeader('Content-Length', line.length);
+  res.setHeader('Content-Type', 'text/javascript');
+
+  res.end(line);
+}
+
 //
 // Expose the module. Expose all the things.
 //
-module.exports = allows;
+zipline.middleware = middleware;
+module.exports = zipline;
