@@ -68,6 +68,17 @@ Factory.prototype.engine = function engine(fs) {
 };
 
 /**
+ * Get the files that use this path.
+ *
+ * @param {String} path location of file.
+ * @returns {Array}
+ * @api private
+ */
+Factory.prototype.get = function get(path) {
+  return [];
+};
+
+/**
  * Re-cache the hot cache with the most requested files from this system.
  * Every time a file is requested we increment the requested count.
  *

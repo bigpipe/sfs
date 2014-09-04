@@ -1,10 +1,13 @@
 'use strict';
 
 var debug = require('diagnostics')('sfs:factory')
+  , hash = require('crypto').createHash
   , path = require('path');
 
 /**
  * Representation of a single file.
+ *
+ * @TODO: Add the path to the contents.
  *
  * @constructor
  * @param {String} path Location of the file.
@@ -15,9 +18,12 @@ function File(path, options) {
   if (!this) return new File(path, options);
   options = options || {};
 
-  this.requested = 0;           // The amount of times this file has been requested.
+  this.requested = 0;           // The amount of x this file has been requested.
   this.contents = [];           // Various of file that we should read.
   this.factory = null;          // Reference to the factory instance.
+  this.alias = '';              // Alias of the file, also known as fingerprint.
+
+  this.modified();
 }
 
 //
@@ -36,6 +42,19 @@ File.prototype.initialize = function initialize(factory) {
   this.factory = factory;
 
   factory.emit('add', this);
+  return this;
+};
+
+/**
+ * Generate a fingerprint of the current content.
+ *
+ * @param
+ * @returns {File}
+ * @api private
+ */
+File.prototype.fingerprinter = function fingerprinter(content) {
+  this.alias = hash('md5').update(content.toString()).digest('hex');
+
   return this;
 };
 
@@ -67,10 +86,13 @@ File.prototype.buffer = function buffer(fn) {
  * @api public
  */
 File.prototype.modified = function modified() {
+  this.fingerprinter();
+
   return this;
 };
 
 /**
+ * Forward the file contents to different streams, services and API's.
  *
  * @returns {File}
  * @api public
@@ -87,6 +109,7 @@ File.prototype.forward = function forward() {
  */
 File.prototype.destroy = function destroy() {
   this.factory.emit('remove', this);
+
   return this;
 };
 
