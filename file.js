@@ -23,7 +23,7 @@ function File(path, options) {
   this.factory = null;          // Reference to the factory instance.
   this.alias = '';              // Alias of the file, also known as fingerprint.
 
-  this.modified();
+  if (path) this.modified();
 }
 
 //
@@ -66,6 +66,39 @@ File.prototype.fingerprinter = function fingerprinter(content) {
     return this.modified();
   };
 });
+
+/**
+ * Concatenate multiple files together.
+ *
+ * @returns {File}
+ * @api public
+ */
+File.prototype.concat = function concat() {
+  var file = new File()
+    , files = Array.prototype.slice.call(arguments, 0);
+
+  //
+  // Initialize the file, so it can register it self in our factory.
+  //
+  file.initialize(this.factory);
+
+  //
+  // Add all the file contents to our new file instances.
+  //
+  Array.prototype.push.apply(file.contents, this.contents);
+  Array.prototype.push.apply(file.contents, files);
+
+  //
+  // Nuke all old file instances as they are now concatenated in to a new
+  // instance.
+  //
+  files.forEach(function each(old) {
+    old.destroy();
+  });
+  this.destroy();
+
+  return file;
+};
 
 /**
  * Read out the compiled contents and callback with the resulting buffer.
