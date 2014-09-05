@@ -14,6 +14,6 @@
   },
   "dependencies": {
     "diagnostics": "0.0.x",
-    "eventemitter3": "0.1.x"
+    "supply": "0.0.x"
   }
 }

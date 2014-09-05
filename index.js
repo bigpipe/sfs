@@ -50,9 +50,10 @@ function Factory(options) {
 }
 
 //
-// Inherit from EventEitter so it's easier for plugins to modify files.
+// Supply provides our middleware and plugin system, so we're going to inherit
+// from it.
 //
-File.prototype.__proto__ = require('eventemitter3').prototype;
+File.prototype.__proto__ = require('supply').prototype;
 
 /**
  * Replace the internal file system.
