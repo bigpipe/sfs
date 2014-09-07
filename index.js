@@ -53,7 +53,8 @@ function Factory(options) {
 // Supply provides our middleware and plugin system, so we're going to inherit
 // from it.
 //
-File.prototype.__proto__ = require('supply').prototype;
+File.prototype.__proto__ = require('eventemitter3').prototype;
+require('supply').middleware(File, { add: 'transform', run: 'run' });
 
 /**
  * Replace the internal file system.
