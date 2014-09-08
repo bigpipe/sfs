@@ -1,8 +1,40 @@
 'use strict';
 
-var queue = Object.create(null)
+var c = process.binding('constants')
+  , queue = Object.create(null)
   , fs = process.binding('fs')
   , sfs = module.exports;
+
+//
+// Generate some name defaults for the flags.
+//
+'O_APPEND,O_CREAT,O_EXCL,O_RDONLY,O_RDWR,O_SYNC,O_TRUNC,O_WRONLY'.split(',')
+.forEach(function defaults(flag) {
+  c[flag] = c[flag] || 0;
+});
+
+/* jshint: ignore:start */
+sfs.flags['r']    = c.O_RDONLY;
+sfs.flags['rs']   = // Fall through, used for alias.
+sfs.flags['sr']   = c.O_RDONLY | c.O_SYNC;
+sfs.flags['r+']   = c.O_RDWR;
+sfs.flags['rs+']  = // Fall through, used for alias.
+sfs.flags['sr+']  = c.O_RDWR | c.O_SYNC;
+
+sfs.flags['w']    = c.O_TRUNC | c.O_CREAT | c.O_WRONLY;
+sfs.flags['wx']   = // Fall through, used for alias.
+sfs.flags['xw']   = c.O_TRUNC | c.O_CREAT | c.O_WRONLY | c.O_EXCL;
+sfs.flags['w+']   = c.O_TRUNC | c.O_CREAT | c.O_RDWR;
+sfs.flags['wx+']  = // Fall through, used for alias.
+sfs.flags['xw+']  = c.O_TRUNC | c.O_CREAT | c.O_RDWR | c.O_EXCL;
+
+sfs.flags['a']    = c.O_APPEND | c.O_CREAT | c.O_WRONLY;
+sfs.flags['ax']   = // Fall through, used for alias.
+sfs.flags['xa']   = c.O_APPEND | c.O_CREAT | c.O_WRONLY | c.O_EXCL;
+sfs.flags['a+']   = c.O_APPEND | c.O_CREAT | c.O_RDWR;
+sfs.flags['ax+']  = // Fall through, used for alias.
+sfs.flags['xa+']  = c.O_APPEND | c.O_CREAT | c.O_RDWR | c.O_EXCL;
+/* jshint: ignore:end */
 
 /**
  * Checks if a file exists on the current hard drive.
@@ -32,6 +64,47 @@ sfs.existsSync = function exists(path) {
     fs.stat(path);
   });
 };
+
+/**
+ * Open a file descriptor.
+ *
+ * @async
+ * @param {String} path Path to the file we're trying to open.
+ * @param {String} flags Flags for opening.
+ * @param {Number} mode Opening mode.
+ * @param {Function} fn Completion callback.
+ * @api private
+ */
+sfs.open = function open(path, flags, mode, fn) {
+  flags = sfs.flags[flags] || flags;
+  fs.open(path, flags, +mode || 438, fn);
+};
+
+/**
+ * Open a file descriptor.
+ *
+ * @sync
+ * @param {String} path Path to the file we're trying to open.
+ * @param {String} flags Flags for opening.
+ * @param {Number} mode Opening mode.
+ * @api private
+ */
+sfs.openSync = function openSync(path, flags, mode) {
+  flags = sfs.flags[flags] || flags;
+  return fs.open(path, flags, +mode || 438);
+};
+
+/**
+ * Close a given file descriptor. We just reference the binding directly as
+ * there is no need for extra function wrapping as the arguments map 1 on 1. For
+ * the synchronous version, just omit the callback argument.
+ *
+ * @async/@sync
+ * @param {FileDescriptor} fd The file descriptor that needs to be closed.
+ * @param {Function} fn Completion callback.
+ * @api private
+ */
+sfs.closeSync = sfs.close = fs.close;
 
 /**
  * Small wrapper for try/catch blocks to prevent a whole function to be
