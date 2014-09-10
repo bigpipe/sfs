@@ -26,7 +26,7 @@ function File(factory, path, options) {
   this.factory = factory;       // Reference to the factory.
 
   factory.emit('add', this);
-  if (path) this.modified();
+  if (path) this.push(path);
 }
 
 //
@@ -36,20 +36,9 @@ File.prototype.__proto__ = require('eventemitter3').prototype;
 require('supply').middleware(File, { add: 'transform', run: 'run' });
 
 /**
- * Initialize the file and register this file instance in our factory.
- *
- * @param {Factory} factory Construction factory.
- * @returns {File}
- * @api private
- */
-File.prototype.initialize = function initialize(factory) {
-  return this;
-};
-
-/**
  * Generate a fingerprint of the current content.
  *
- * @param
+ * @param {String|Buffer} content Content that needs to be fingered.
  * @returns {File}
  * @api private
  */
@@ -75,13 +64,8 @@ File.prototype.fingerprinter = function fingerprinter(content) {
  * @api public
  */
 File.prototype.concat = function concat() {
-  var file = new File()
+  var file = new File(this.factory)
     , files = Array.prototype.slice.call(arguments, 0);
-
-  //
-  // Initialize the file, so it can register it self in our factory.
-  //
-  file.initialize(this.factory);
 
   //
   // Add all the file contents to our new file instances.
