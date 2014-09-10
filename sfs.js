@@ -182,3 +182,13 @@ Object.keys(sfs).forEach(function tag(method) {
     sfs[method].toString()  // Use the function body as content for the hash
   ).digest('hex');
 }, require('crypto'));
+
+//
+// Now that we've compiled unique hash methods on every single `sfs` tuned
+// function we can introduce all potential missing API's from the node's fs
+// module to ensure that we we have full API compatibility.
+//
+Object.keys(require('fs')).forEach(function each(key) {
+  if (key in sfs) return;
+  sfs[key] = require('fs')[key];
+});
