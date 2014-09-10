@@ -8,12 +8,14 @@ var c = process.binding('constants')
 //
 // Generate some name defaults for the flags.
 //
-'O_APPEND,O_CREAT,O_EXCL,O_RDONLY,O_RDWR,O_SYNC,O_TRUNC,O_WRONLY'.split(',')
-.forEach(function defaults(flag) {
-  c[flag] = c[flag] || 0;
-});
+c = 'O_APPEND,O_CREAT,O_EXCL,O_RDONLY,O_RDWR,O_SYNC,O_TRUNC,O_WRONLY'.split(',')
+.reduce(function defaults(memo, flag) {
+  memo[flag] = c[flag] || 0;
+  return memo;
+}, Object.create(null));
 
 /* jshint: ignore:start */
+sfs.flags = Object.create(null);
 sfs.flags['r']    = c.O_RDONLY;
 sfs.flags['rs']   = // Fall through, used for alias.
 sfs.flags['sr']   = c.O_RDONLY | c.O_SYNC;
