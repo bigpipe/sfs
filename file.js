@@ -131,7 +131,10 @@ File.prototype.modified = function modified() {
  * @returns {File}
  * @api public
  */
-File.prototype.forward = function forward() {
+File.prototype.forward = function forward(what, options) {
+  options = options || {};
+
+  this.requested++;
   return this;
 };
 
