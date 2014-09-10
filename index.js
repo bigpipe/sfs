@@ -42,8 +42,7 @@ function Factory(options) {
   this.files = [];                                // Active files.
 
   this.File = function File(path, options) {
-    this.fuse(arguments);
-    this.initialize(selfie);
+    this.fuse([selfie, path, options]);
   };
 
   fuse(this.File, File);
@@ -53,8 +52,8 @@ function Factory(options) {
 // Supply provides our middleware and plugin system, so we're going to inherit
 // from it.
 //
-File.prototype.__proto__ = require('eventemitter3').prototype;
-require('supply').middleware(File, { add: 'transform', run: 'run' });
+Factory.prototype.__proto__ = require('eventemitter3').prototype;
+require('supply').middleware(Factory, { add: 'transform', run: 'run' });
 
 /**
  * Replace the internal file system.

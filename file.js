@@ -10,11 +10,12 @@ var debug = require('diagnostics')('sfs:factory')
  * @TODO: Add the path to the contents.
  *
  * @constructor
+ * @param {Factory} factory The factory that creates and manages the files.
  * @param {String} path Location of the file.
  * @param {Object} options File configuration.
  * @api public
  */
-function File(path, options) {
+function File(factory, path, options) {
   if (!this) return new File(path, options);
   options = options || {};
 
@@ -22,7 +23,9 @@ function File(path, options) {
   this.contents = [];           // Various of file that we should read.
   this.factory = null;          // Reference to the factory instance.
   this.alias = '';              // Alias of the file, also known as fingerprint.
+  this.factory = factory;       // Reference to the factory.
 
+  factory.emit('add', this);
   if (path) this.modified();
 }
 
@@ -30,6 +33,7 @@ function File(path, options) {
 // File inherits from the EventEmitter so people can hook in to these changes.
 //
 File.prototype.__proto__ = require('eventemitter3').prototype;
+require('supply').middleware(File, { add: 'transform', run: 'run' });
 
 /**
  * Initialize the file and register this file instance in our factory.
@@ -39,9 +43,6 @@ File.prototype.__proto__ = require('eventemitter3').prototype;
  * @api private
  */
 File.prototype.initialize = function initialize(factory) {
-  this.factory = factory;
-
-  factory.emit('add', this);
   return this;
 };
 
