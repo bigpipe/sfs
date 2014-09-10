@@ -2,6 +2,8 @@
 
 var debug = require('diagnostics')('sfs:factory')
   , HotPath = require('./hotpath')
+  , parse = require('url').parse
+  , supply = require('supply')
   , fuse = require('fusing')
   , File = require('./file');
 
@@ -28,24 +30,34 @@ function optional(fn, msg) {
  * - engine, {FileSystem}, The file system where we store and get our files.
  *
  * @constructor
+ * @param {Server} server HTTP/HTTPS server instance.
  * @param {Object} options Factory configuration.
  * @api private
  */
-function Factory(options) {
-  if (!this) return new Factory(options);
+function Factory(server, options) {
+  if (!this) return new Factory(server, options);
 
   var selfie = this;
+  options = options || {};
 
   this.hotpath = new HotPath(options.hotpath);    // Internal cache system.
   this.fs = options.engine || require('./sfs');   // File system.
+  this.options = options;                         // Backup of the options.
+  this.server = server;                           // The HTTP server we attach on.
   this.timers = {};                               // Active timers.
   this.files = [];                                // Active files.
+  this.mount(this.server);
 
+  //
+  // Expose the File constructor which now contains a reference to the newly
+  // created Factory.
+  //
   this.File = function File(path, options) {
     this.fuse([selfie, path, options]);
   };
 
   fuse(this.File, File);
+  this.mount();
 }
 
 //
@@ -53,7 +65,7 @@ function Factory(options) {
 // from it.
 //
 Factory.prototype.__proto__ = require('eventemitter3').prototype;
-require('supply').middleware(Factory, { add: 'transform', run: 'run' });
+supply.middleware(Factory, { add: 'transform', run: 'run' });
 
 /**
  * Replace the internal file system.
@@ -120,6 +132,38 @@ Factory.prototype.clearTimeout = function clearTimeout() {
     clearInterval(this.timers[arguments[i]]);
     this.timers[arguments[i]] = null;
   }
+
+  return this;
+};
+
+/**
+ * Attach the factory instance to a given HTTP server instance. We assume that
+ * these HTTP servers work with an `supply` or `connect` based middleware system.
+ * The compatibility mode can be set using the options object:
+ *
+ * - connect, `false`, Use the connect based middleware system.
+ * - add, `undefined`, Use the given method name for adding middleware.
+ *
+ * @param {Server} server HTTP server instance.
+ * @param {Object} options Optional configuration.
+ * @returns {Factory}
+ * @api public
+ */
+Factory.prototype.mount = function mount(server, options) {
+  if (!options) options = this.options;
+  if (!server) server = this.server;
+
+  var selfie = this;
+
+  supply.detect(server, 'zipline', require('./zipline'), options);
+  supply.detect(server, 'sfs', function sfs(req, res, next) {
+    req.uri = req.uri || parse(req.url);
+
+    var file = selfie.alias(req.uri.pathname);
+    if (!file || 'GET' !== req.method) return next();
+
+    file.forward(res, { gzip: req.zipline, headers: req.headers });
+  }, options);
 
   return this;
 };
