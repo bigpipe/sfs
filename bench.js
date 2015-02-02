@@ -1,6 +1,6 @@
 'use strict';
 
-var sfs = require('./sfs')
+var sfs = require('./')
   , fs = require('fs');
 
 /**
