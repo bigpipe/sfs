@@ -1,5 +1,5 @@
 {
-  "name": "sfs",
+  "name": "s.fs",
   "version": "0.1.0",
   "description": "Supreme File System: A hand tuned file system layer for BigPipe",
   "main": "index.js",
