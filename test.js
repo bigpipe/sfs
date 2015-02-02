@@ -7,7 +7,7 @@ describe('sfs', function () {
 
   describe('.exists', function () {
     it('finds our test file', function (next) {
-      sfs.exists(__dirname + '/sfs.test.js', function (err, exists) {
+      sfs.exists(__dirname + '/test.js', function (err, exists) {
         assume(err).to.be.a('undefined');
         assume(exists).to.equal(true);
 
