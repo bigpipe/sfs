@@ -4,19 +4,19 @@
   "description": "Supreme File System",
   "main": "index.js",
   "scripts": {
-    "test": "illuminati"
+    "test": "mocha test.js"
   },
   "author": "Arnout Kazemier",
   "license": "MIT",
   "devDependencies": {
-    "assume": "0.0.x",
-    "illuminati": "0.0.x",
-    "pre-commit": "0.0.x"
+    "assume": "1.1.x",
+    "mocha": "2.1.x",
+    "pre-commit": "1.0.x"
   },
   "dependencies": {
     "diagnostics": "0.0.x",
     "eventemitter3": "0.1.x",
-    "fusing": "0.3.x",
+    "fusing": "1.0.x",
     "supply": "0.0.x"
   }
 }
