@@ -1,17 +1,31 @@
 {
-  "name": "s.fs",
-  "version": "0.1.0",
-  "description": "Supreme File System: A hand tuned file system layer for BigPipe",
+  "name": "supreme",
+  "version": "0.0.0",
+  "description": "Supreme File System: A hand tuned fs library specially written for BigPipe's assets compiler",
   "main": "index.js",
-  "scripts": {
-    "test": "mocha test.js",
-    "bench": "node bench.js"
-  },
-  "author": "Arnout Kazemier",
-  "license": "MIT",
   "devDependencies": {
     "assume": "1.1.x",
     "mocha": "2.1.x",
     "pre-commit": "1.0.x"
-  }
+  },
+  "scripts": {
+    "test": "mocha test",
+    "bench": "node bench.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bigpipe/supreme"
+  },
+  "keywords": [
+    "supreme",
+    "file",
+    "system",
+    "sfs"
+  ],
+  "author": "Arnout Kazemier",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bigpipe/supreme/issues"
+  },
+  "homepage": "https://github.com/bigpipe/supreme"
 }
