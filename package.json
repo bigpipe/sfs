@@ -1,10 +1,11 @@
 {
   "name": "sfs",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Supreme File System: A hand tuned file system layer for BigPipe",
   "main": "index.js",
   "scripts": {
-    "test": "mocha test.js"
+    "test": "mocha test.js",
+    "bench": "node bench.js"
   },
   "author": "Arnout Kazemier",
   "license": "MIT",
