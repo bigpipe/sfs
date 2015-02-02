@@ -1,174 +1,194 @@
 'use strict';
 
-var debug = require('diagnostics')('sfs:factory')
-  , HotPath = require('./hotpath')
-  , parse = require('url').parse
-  , supply = require('supply')
-  , fuse = require('fusing')
-  , File = require('./file');
-
-/**
- * Handy helper function for creating optional callbacks.
- *
- * @param {Function} fn Optional callback.
- * @param {String} msg Optional failure message.
- * @returns {Function}
- * @api private
- */
-function optional(fn, msg) {
-  return fn || function nope(err) {
-    if (err) debug(msg || 'Missing callback for failed operation', err);
-  };
-}
-
-/**
- * Our file factory.
- *
- * Options:
- *
- * - hotpath, {Object}, Configuration for our hotpath cache.
- * - engine, {FileSystem}, The file system where we store and get our files.
- *
- * @constructor
- * @param {Server} server HTTP/HTTPS server instance.
- * @param {Object} options Factory configuration.
- * @api private
- */
-function Factory(server, options) {
-  if (!this) return new Factory(server, options);
-
-  var selfie = this;
-  options = options || {};
-
-  this.hotpath = new HotPath(options.hotpath);    // Internal cache system.
-  this.fs = options.engine || require('./sfs');   // File system.
-  this.options = options;                         // Backup of the options.
-  this.server = server;                           // The HTTP server we attach on.
-  this.timers = {};                               // Active timers.
-  this.files = [];                                // Active files.
-  this.mount(this.server);
-
-  //
-  // Expose the File constructor which now contains a reference to the newly
-  // created Factory.
-  //
-  this.File = function File(path, options) {
-    this.fuse([selfie, path, options]);
-  };
-
-  fuse(this.File, File);
-  this.mount();
-}
+var c = process.binding('constants')
+  , queue = Object.create(null)
+  , fs = process.binding('fs')
+  , sfs = module.exports;
 
 //
-// Supply provides our middleware and plugin system, so we're going to inherit
-// from it.
+// Generate some name defaults for the flags.
 //
-Factory.prototype.__proto__ = require('eventemitter3').prototype;
-supply.middleware(Factory, { add: 'transform', run: 'run' });
+c = 'O_APPEND,O_CREAT,O_EXCL,O_RDONLY,O_RDWR,O_SYNC,O_TRUNC,O_WRONLY'.split(',')
+.reduce(function defaults(memo, flag) {
+  memo[flag] = c[flag] || 0;
+  return memo;
+}, Object.create(null));
+
+/* jshint: ignore:start */
+sfs.flags = Object.create(null);
+
+sfs.flags['r']    = c.O_RDONLY;
+sfs.flags['rs']   = // Fall through, used for alias.
+sfs.flags['sr']   = c.O_RDONLY | c.O_SYNC;
+sfs.flags['r+']   = c.O_RDWR;
+sfs.flags['rs+']  = // Fall through, used for alias.
+sfs.flags['sr+']  = c.O_RDWR | c.O_SYNC;
+
+sfs.flags['w']    = c.O_TRUNC | c.O_CREAT | c.O_WRONLY;
+sfs.flags['wx']   = // Fall through, used for alias.
+sfs.flags['xw']   = c.O_TRUNC | c.O_CREAT | c.O_WRONLY | c.O_EXCL;
+sfs.flags['w+']   = c.O_TRUNC | c.O_CREAT | c.O_RDWR;
+sfs.flags['wx+']  = // Fall through, used for alias.
+sfs.flags['xw+']  = c.O_TRUNC | c.O_CREAT | c.O_RDWR | c.O_EXCL;
+
+sfs.flags['a']    = c.O_APPEND | c.O_CREAT | c.O_WRONLY;
+sfs.flags['ax']   = // Fall through, used for alias.
+sfs.flags['xa']   = c.O_APPEND | c.O_CREAT | c.O_WRONLY | c.O_EXCL;
+sfs.flags['a+']   = c.O_APPEND | c.O_CREAT | c.O_RDWR;
+sfs.flags['ax+']  = // Fall through, used for alias.
+sfs.flags['xa+']  = c.O_APPEND | c.O_CREAT | c.O_RDWR | c.O_EXCL;
+/* jshint: ignore:end */
 
 /**
- * Replace the internal file system.
+ * Checks if a file exists on the current hard drive.
  *
- * @param {FileSystem} fs The file system that we should use for the files.
- * @returns {Factory}
- * @api public
- */
-Factory.prototype.engine = function engine(fs) {
-  this.fs = fs;
-
-  return this;
-};
-
-/**
- * Get the files that use this path.
- *
- * @param {String} path location of file.
- * @returns {Array}
+ * @async
+ * @param {String} path Path to a thing that needs to exist.
+ * @param {Function} fn Completion callback.
  * @api private
  */
-Factory.prototype.get = function get(path) {
-  return [];
-};
+sfs.exists = function exists(path, fn) {
+  if (running(exists, path, fn)) return;
 
-/**
- * Re-cache the hot cache with the most requested files from this system.
- * Every time a file is requested we increment the requested count.
- *
- * @param {Function} fn Optional completion callback.
- * @returns {Factory}
- * @api public
- */
-Factory.prototype.cache = function cache(fn) {
-  fn = optional(fn, 'Failed to update the cache');
-
-  var sorted = this.files.sort(function sort(a, b) {
-    return a.requested - b.requested;
+  fs.stat(path, function done(err) {
+    complete(exists, path, undefined, !err);
   });
-
-  //
-  // Clear the hot cache as we're about to refill it's contents with new and
-  // potentially hotter code paths.
-  //
-  this.hotpath.reset();
-
-  sorted.forEach(function forEach(file) {
-    return this.hotpath.set(file.uuid, file.buffer());
-  }, this);
-
-  return this;
 };
 
 /**
- * Clear the any of the given timeouts.
+  * Checks if a file exists on the current hard drive.
+  *
+  * @sync
+  * @param {String} path Path to a thing that needs to exist.
+  * @api private
+ */
+sfs.existsSync = function exists(path) {
+  return !trying(function stat() {
+    fs.stat(path);
+  });
+};
+
+/**
+ * Open a file descriptor.
  *
- * @arguments {String} names of timeouts that needs to be cleared.
- * @returns {Factory}
+ * @async
+ * @param {String} path Path to the file we're trying to open.
+ * @param {String} flags Flags for opening.
+ * @param {Number} mode Opening mode.
+ * @param {Function} fn Completion callback.
+ * @api private
+ */
+sfs.open = function open(path, flags, mode, fn) {
+  flags = sfs.flags[flags] || flags;
+  fs.open(path, flags, +mode || 438, fn);
+};
+
+/**
+ * Open a file descriptor.
+ *
+ * @sync
+ * @param {String} path Path to the file we're trying to open.
+ * @param {String} flags Flags for opening.
+ * @param {Number} mode Opening mode.
+ * @api private
+ */
+sfs.openSync = function openSync(path, flags, mode) {
+  flags = sfs.flags[flags] || flags;
+  return fs.open(path, flags, +mode || 438);
+};
+
+/**
+ * Close a given file descriptor. We just reference the binding directly as
+ * there is no need for extra function wrapping as the arguments map 1 on 1. For
+ * the synchronous version, just omit the callback argument.
+ *
+ * @async/@sync
+ * @param {FileDescriptor} fd The file descriptor that needs to be closed.
+ * @param {Function} fn Completion callback.
+ * @api private
+ */
+sfs.closeSync = sfs.close = fs.close;
+
+/**
+ * Small wrapper for try/catch blocks to prevent a whole function to be
+ * de-optimized.
+ *
+ * @param {Function} fn Function to attempt to execute.
+ * @returns {Error}
  * @api public
  */
-Factory.prototype.clearTimeout = function clearTimeout() {
-  for (var i = 0, l = arguments.length; i < l; i++) {
-    clearTimeout(this.timers[arguments[i]]);
-    clearInterval(this.timers[arguments[i]]);
-    this.timers[arguments[i]] = null;
+function trying(fn) {
+  try { return fn(); }
+  catch (e) { return e; }
+}
+
+/**
+ * Check if a certain operation is already running in our processing queue. It's
+ * pointless. Because it's pointless to concurrently run exactly the same task.
+ * We do not require a high level of uniqueness within this module.
+ *
+ * @param {Function} method Reference to the function that needs the queue.
+ * @param {String} path Location of a thing.
+ * @param {Function} fn Completion callback.
+ * @api private
+ */
+function running(method, path, fn) {
+  var id = method.sfs +'@'+ path;
+
+  if (!queue[id]) {
+    queue[id] = [fn];
+    return false;
   }
 
-  return this;
-};
+  queue[id].push(fn);
+  return true;
+}
 
 /**
- * Attach the factory instance to a given HTTP server instance. We assume that
- * these HTTP servers work with an `supply` or `connect` based middleware system.
- * The compatibility mode can be set using the options object:
+ * A queued operation has been completed, call all the callbacks with the
+ * results or error.
  *
- * - connect, `false`, Use the connect based middleware system.
- * - add, `undefined`, Use the given method name for adding middleware.
- *
- * @param {Server} server HTTP server instance.
- * @param {Object} options Optional configuration.
- * @returns {Factory}
- * @api public
+ * @param {Function} method Reference to the function that needs the queue.
+ * @param {String} path Location of a thing.
+ * @param {Error} err Optional error argument for callback.
+ * @param {Mixed} data Result of the async operation.
+ * @api private
  */
-Factory.prototype.mount = function mount(server, options) {
-  if (!options) options = this.options;
-  if (!server) server = this.server;
+function complete(method, path, err, data) {
+  var id = method.sfs +'@'+ path
+    , fns = queue[id]
+    , l = fns.length
+    , i = 0;
 
-  var selfie = this;
+  //
+  // Delete the queue before we call the callbacks. This prevents users from
+  // adding new calls to the queue that we're currently processing.
+  //
+  delete queue[id];
 
-  supply.detect(server, 'zipline', require('./zipline'), options);
-  supply.detect(server, 'sfs', function sfs(req, res, next) {
-    req.uri = req.uri || parse(req.url);
-
-    var file = selfie.alias(req.uri.pathname);
-    if (!file || 'GET' !== req.method) return next();
-
-    file.forward(res, { gzip: req.zipline, headers: req.headers });
-  }, options);
-
-  return this;
-};
+  for (; i < l; i++) {
+    fns[i](err, data);
+  }
+}
 
 //
-// Expose the module.
+// Add a unique id for each of the supreme file system methods so we can use it
+// check in our running queue and execute callbacks at once.
 //
-module.exports = Factory;
+Object.keys(sfs).forEach(function tag(method) {
+  if ('function' !== typeof sfs[method]) return;
+
+  sfs[method].sfs = this.createHash('md5').update(
+    sfs[method].toString()  // Use the function body as content for the hash
+  ).digest('hex');
+}, require('crypto'));
+
+//
+// Now that we've compiled unique hash methods on every single `sfs` tuned
+// function we can introduce all potential missing API's from the node's fs
+// module to ensure that we we have full API compatibility.
+//
+Object.keys(require('fs')).forEach(function each(key) {
+  if (key in sfs) return;
+  sfs[key] = require('fs')[key];
+});
