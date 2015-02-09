@@ -2,8 +2,8 @@ describe('sfs', function () {
   'use strict';
 
   var assume = require('assume')
-    , sfs = require('../sfs')
-    , path = require('path');
+    , path = require('path')
+    , sfs = require('./');
 
   describe('.exists', function () {
     it('finds our test file', function (next) {
