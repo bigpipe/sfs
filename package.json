@@ -4,9 +4,9 @@
   "description": "Supreme File System: A hand tuned fs library specially written for BigPipe's assets compiler",
   "main": "index.js",
   "devDependencies": {
-    "assume": "1.1.x",
-    "mocha": "2.1.x",
-    "pre-commit": "1.0.x"
+    "assume": "~1.4.1",
+    "mocha": "~3.1.2",
+    "pre-commit": "~1.1.3"
   },
   "scripts": {
     "test": "mocha test",
